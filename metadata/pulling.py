@@ -23,39 +23,44 @@ Smart contract helper methods
 """
 
 
-def get_contract_abi(address): 
+def get_contract_abi(address):
     # Get contract ABI
-    abi_url = f'{ABI_ENDPOINT}{address}'
+    abi_url = f"{ABI_ENDPOINT}{address}"
     response = requests.get(abi_url)
     print(response)
     try:
-        abi = json.loads(response.json()['result'])
+        abi = json.loads(response.json()["result"])
         return abi
     except Exception as err:
         print(err)
-        raise Exception(f'Failed to get contract ABI.\nURL: {abi_url}\nResponse: {response.json()}')
+        raise Exception(
+            f"Failed to get contract ABI.\nURL: {abi_url}\nResponse: {response.json()}"
+        )
 
 
 def get_contract(address, abi):
     # Connect to web3
     if ENDPOINT == "":
-        print("You must enter a Web3 provider. This is currently not a command line option. You must open this file and assign a valid provider to the ENDPOINT and IPFS_GATEWAY constants. See: https://ipfs.github.io/public-gateway-checker/")
+        print(
+            "You must enter a Web3 provider. This is currently not a command line option. You must open this file and assign a valid provider to the ENDPOINT and IPFS_GATEWAY constants. See: https://ipfs.github.io/public-gateway-checker/"
+        )
         sys.exit()
-        
-        
+
     w3 = Web3(Web3.HTTPProvider(ENDPOINT))
 
     # Check if abi contains the tokenURI function
-    contract_functions = [func['name'] for func in abi if 'name' in func]
+    contract_functions = [func["name"] for func in abi if "name" in func]
 
-    if 'implementation' in contract_functions:
+    if "implementation" in contract_functions:
         # Handle case where the contract is a proxy contract
         # Fetch address for the implementation contract
         impl_contract = w3.toHex(w3.eth.get_storage_at(address, IMPLEMENTATION_SLOT))
 
         # Strip the padded zeros from the implementation contract address
-        impl_address = '0x' + impl_contract[-40:]
-        print(f'Contract is a proxy contract. Using implementation address: {impl_address}')
+        impl_address = "0x" + impl_contract[-40:]
+        print(
+            f"Contract is a proxy contract. Using implementation address: {impl_address}"
+        )
 
         # Sleep to respect etherscan API limit
         time.sleep(5)
@@ -82,31 +87,31 @@ def get_contract_function(contract, func_name, abi):
         return getattr(contract.functions, func_name)
     else:
         # The function name provided is not in the contract ABI, so throw an error
-        func_names = [f['name'] for f in abi if 'name' in f]
+        func_names = [f["name"] for f in abi if "name" in f]
         raise ValueError(
-            f'{func_name} is not in the contract ABI. Inspect the following function names '
-            f'for candidates and pass to the command line arguments: {func_names}'
+            f"{func_name} is not in the contract ABI. Inspect the following function names "
+            f"for candidates and pass to the command line arguments: {func_names}"
         )
 
 
 def format_ipfs_uri(uri):
     # Reformat IPFS gateway
-    ipfs_1 = 'ipfs://'
-    ipfs_2 = 'https://ipfs.io/ipfs/'
-    ipfs_3 = 'https://gateway.pinata.cloud/ipfs/'
+    ipfs_1 = "ipfs://"
+    ipfs_2 = "https://ipfs.io/ipfs/"
+    ipfs_3 = "https://gateway.pinata.cloud/ipfs/"
     ipfs_hash_identifier = "Qm"
 
-    if IPFS_GATEWAY == '':
+    if IPFS_GATEWAY == "":
         if uri.startswith(ipfs_1):
-            uri = ipfs_2 + uri[len(ipfs_1):]
+            uri = ipfs_2 + uri[len(ipfs_1) :]
     else:
         if uri.startswith(ipfs_1):
-            uri = IPFS_GATEWAY + uri[len(ipfs_1):]
+            uri = IPFS_GATEWAY + uri[len(ipfs_1) :]
         elif uri.startswith(ipfs_2):
-            uri = IPFS_GATEWAY + uri[len(ipfs_2):]
+            uri = IPFS_GATEWAY + uri[len(ipfs_2) :]
         elif uri.startswith(ipfs_3):
-            uri = IPFS_GATEWAY + uri[len(ipfs_3):]
-        elif 'pinata' in uri:
+            uri = IPFS_GATEWAY + uri[len(ipfs_3) :]
+        elif "pinata" in uri:
             starting_index_of_hash = uri.find(ipfs_hash_identifier)
             uri = IPFS_GATEWAY + uri[starting_index_of_hash:]
 
@@ -130,7 +135,7 @@ def get_lower_id(contract, uri_func, abi):
         try:
             # Fetch the metadata url from the contract
             uri = get_contract_uri(contract, token_id, uri_func, abi)
-            print(f'Metadata for lower bound token id is at: {uri}')
+            print(f"Metadata for lower bound token id is at: {uri}")
             lower_token_id = token_id
             break
         except Exception as err:
@@ -140,7 +145,7 @@ def get_lower_id(contract, uri_func, abi):
 
     # Raise exception if method fails to find the metadata url
     if lower_token_id is None:
-        raise Exception('Unable to get the metadata url.')
+        raise Exception("Unable to get the metadata url.")
 
     # Return lower id
     return lower_token_id
@@ -158,7 +163,9 @@ def get_metadata(uri, destination):
         response_json = uri_response.json()
     except Exception as err:
         print(err)
-        raise Exception(f'Failed to get metadata from server using {uri}. Got {uri_response}.')
+        raise Exception(
+            f"Failed to get metadata from server using {uri}. Got {uri_response}."
+        )
 
     # Write raw metadata json file to disk
     with open(destination, "w") as destination_file:
@@ -168,28 +175,27 @@ def get_metadata(uri, destination):
     return response_json
 
 
-def fetch_all_metadata(token_ids, collection, sleep, uri_func, contract, abi, uri_base, uri_suffix):
+def fetch_all_metadata(
+    token_ids, collection, sleep, uri_func, contract, abi, uri_base, uri_suffix
+):
 
     # Initiate list of dicts that will be converted to DataFrame
     dictionary_list = []
     file_suffix = ""
 
     # Create raw attribute folder for collection if it doesnt already exist
-    folder = f'{ATTRIBUTES_FOLDER}/{collection}/'
+    folder = f"{ATTRIBUTES_FOLDER}/{collection}/"
     if not os.path.exists(folder):
         os.mkdir(folder)
 
     if uri_base is not None and uri_base.find("ipfs") != -1:
-        folder_walk = os.walk(folder, topdown=True,
-                              onerror=None, followlinks=False)
+        folder_walk = os.walk(folder, topdown=True, onerror=None, followlinks=False)
         _files = next(folder_walk)[2]
 
         if len(_files) == 0:
             cid = infer_cid_from_uri(uri_base)
-            fetch_ipfs_folder(collection_name=collection,
-                              cid=cid)
-            folder_walk = os.walk(folder, topdown=True,
-                                  onerror=None, followlinks=False)
+            fetch_ipfs_folder(collection_name=collection, cid=cid)
+            folder_walk = os.walk(folder, topdown=True, onerror=None, followlinks=False)
             _files = next(folder_walk)[2]
 
         first_file = _files[0]
@@ -202,12 +208,12 @@ def fetch_all_metadata(token_ids, collection, sleep, uri_func, contract, abi, ur
         result_json = None
 
         # Check if metadata file already exists
-        filename = "{folder}{token_id}{file_extension}".format(folder=folder,
-                                                               token_id=token_id,
-                                                               file_extension=file_suffix)
+        filename = "{folder}{token_id}{file_extension}".format(
+            folder=folder, token_id=token_id, file_extension=file_suffix
+        )
         if os.path.exists(filename):
             # Load existing file from disk
-            with open(filename, 'r') as f:
+            with open(filename, "r") as f:
                 result_json = json.load(f)
 
         else:
@@ -216,12 +222,12 @@ def fetch_all_metadata(token_ids, collection, sleep, uri_func, contract, abi, ur
             if uri_base is not None:
                 # Build URI from base URI and URI suffix provided
                 uri_base = format_ipfs_uri(uri_base)
-                if uri_base.endswith('/'):
+                if uri_base.endswith("/"):
                     uri_base = uri_base[:-1]
-                if uri_base.endswith('='):
-                    metadata_uri = f'{uri_base}{token_id}'
+                if uri_base.endswith("="):
+                    metadata_uri = f"{uri_base}{token_id}"
                 else:
-                    metadata_uri = f'{uri_base}/{token_id}'
+                    metadata_uri = f"{uri_base}/{token_id}"
                 if uri_suffix is not None:
                     metadata_uri += uri_suffix
             elif uri_func is not None and contract is not None and abi is not None:
@@ -229,7 +235,8 @@ def fetch_all_metadata(token_ids, collection, sleep, uri_func, contract, abi, ur
                 metadata_uri = get_contract_uri(contract, token_id, uri_func, abi)
             else:
                 raise ValueError(
-                    'Failed to get metadata URI. Must either provide a uri_base or contract')
+                    "Failed to get metadata URI. Must either provide a uri_base or contract"
+                )
 
             # Set parameters for retrying to pull from server
             max_retries = 5
@@ -246,8 +253,10 @@ def fetch_all_metadata(token_ids, collection, sleep, uri_func, contract, abi, ur
                     break
                 except Exception as err:
                     # Handle throttling, pause and then try again up to max_retries number of times
-                    print(f'Got below error when trying to get metadata for token id {token_id}. '
-                          f'Will sleep and retry...')
+                    print(
+                        f"Got below error when trying to get metadata for token id {token_id}. "
+                        f"Will sleep and retry..."
+                    )
                     print(err)
                     retries += 1
 
@@ -257,7 +266,7 @@ def fetch_all_metadata(token_ids, collection, sleep, uri_func, contract, abi, ur
                     # Throw an error when max retries is exceeded
                     if retries >= max_retries:
                         # raise Exception('Max retries exceeded. Shutting down.')
-                        print('Max retries exceeded. Moving to next...')
+                        print("Max retries exceeded. Moving to next...")
                         break
 
         if result_json is not None:
@@ -265,37 +274,41 @@ def fetch_all_metadata(token_ids, collection, sleep, uri_func, contract, abi, ur
             # TODO: What are other variations of name?
             # Add token name and token URI traits to the trait dictionary
             traits = dict()
-            if 'name' in result_json:
-                traits['TOKEN_NAME'] = result_json['name']
+            if "name" in result_json:
+                traits["TOKEN_NAME"] = result_json["name"]
             else:
-                traits['TOKEN_NAME'] = f'UNKNOWN'
-            traits['TOKEN_ID'] = token_id
+                traits["TOKEN_NAME"] = f"UNKNOWN"
+            traits["TOKEN_ID"] = token_id
 
             # Find the attribute key from the server response
-            if 'attributes' in result_json:
-                attribute_key = 'attributes'
-            elif 'traits' in result_json:
-                attribute_key = 'traits'
+            if "attributes" in result_json:
+                attribute_key = "attributes"
+            elif "traits" in result_json:
+                attribute_key = "traits"
             else:
-                raise ValueError(f'Failed to find the attribute key in the token {token_id} '
-                                 f'metadata result. Tried "attributes" and "traits".\nAvailable '
-                                 f'keys: {result_json.keys()}')
+                raise ValueError(
+                    f"Failed to find the attribute key in the token {token_id} "
+                    f'metadata result. Tried "attributes" and "traits".\nAvailable '
+                    f"keys: {result_json.keys()}"
+                )
 
             # Add traits from the server response JSON to the traits dictionary
             try:
                 for attribute in result_json[attribute_key]:
-                    if 'value' in attribute and 'trait_type' in attribute:
-                        traits[attribute['trait_type']] = attribute['value']
-                    elif 'value' not in attribute and isinstance(attribute, dict):
+                    if "value" in attribute and "trait_type" in attribute:
+                        traits[attribute["trait_type"]] = attribute["value"]
+                    elif "value" not in attribute and isinstance(attribute, dict):
                         if len(attribute.keys()) == 1:
-                            traits[attribute['trait_type']] = 'None'
+                            traits[attribute["trait_type"]] = "None"
                     elif isinstance(attribute, str):
                         traits[attribute] = result_json[attribute_key][attribute]
                 dictionary_list.append(traits)
             # Handle exceptions result from URI does not contain attributes
             except Exception as err:
                 print(err)
-                print(f'Failed to get metadata for id {token_id}. Url response was {result_json}.')
+                print(
+                    f"Failed to get metadata for id {token_id}. Url response was {result_json}."
+                )
 
     return dictionary_list
 
@@ -311,7 +324,7 @@ def fetch_ipfs_folder(collection_name, cid, timeout=3600):
     :param timeout:
     :type timeout: int | None
     """
-    folder = f'{ATTRIBUTES_FOLDER}/{collection_name}/'
+    folder = f"{ATTRIBUTES_FOLDER}/{collection_name}/"
     if not os.path.exists(folder):
         os.mkdir(folder)
     infura = "/dns/infura-ipfs.io/tcp/5001/https"
@@ -319,8 +332,7 @@ def fetch_ipfs_folder(collection_name, cid, timeout=3600):
     ipfs_gateway_io = "/dns/gateway.ipfs.io/tcp/443/https"
     client = ipfshttpclient.connect(addr=ipfs_gateway_io, timeout=timeout)
     client.get(f"/ipfs/{cid}/", target="./raw_attributes/")
-    os.rename(
-        f"./raw_attributes/{cid}", f"./raw_attributes/{collection_name}")
+    os.rename(f"./raw_attributes/{cid}", f"./raw_attributes/{collection_name}")
 
 
 def get_file_suffix(filename, token_id="\\d+"):
@@ -349,7 +361,7 @@ def infer_cid_from_uri(uri):
 
     :param uri
     :type uri: str
-    :return: cid   
+    :return: cid
     :rtype: str | None
     """
     cid_pattern = r"Qm[a-zA-Z0-9-_]+"
@@ -377,13 +389,17 @@ def pull_metadata(args):
     # Get the max supply of the contract
     if args.max_supply is None and contract is not None and abi is not None:
         # Supply function not provided so will infer max supply from the contract object
-        supply_func = get_contract_function(contract=contract, func_name=args.supply_func, abi=abi)
+        supply_func = get_contract_function(
+            contract=contract, func_name=args.supply_func, abi=abi
+        )
         max_supply = supply_func().call()
     elif args.max_supply is not None:
         # Setting max supply as provided
         max_supply = args.max_supply
     else:
-        raise ValueError('Failed to get max supply. Must either provide contract or max_supply.')
+        raise ValueError(
+            "Failed to get max supply. Must either provide contract or max_supply."
+        )
 
     # Get the lower bound token id of the contract
     if args.lower_id is None and contract is not None and abi is not None:
@@ -393,7 +409,9 @@ def pull_metadata(args):
         # Setting lower id as provided
         lower_id = args.lower_id
     else:
-        raise ValueError('Failed to get lower id. Must either provide contract or lower_id.')
+        raise ValueError(
+            "Failed to get lower id. Must either provide contract or lower_id."
+        )
 
     # Get the upper bound token id of the contract
     if args.upper_id is None and contract is not None and abi is not None:
@@ -407,19 +425,23 @@ def pull_metadata(args):
 
     # Get collection name
     if args.collection is None and contract is not None and abi is not None:
-        name_func = get_contract_function(contract=contract, func_name=args.name_func, abi=abi)
+        name_func = get_contract_function(
+            contract=contract, func_name=args.name_func, abi=abi
+        )
         collection = name_func().call()
     elif args.collection is not None:
         collection = args.collection
     else:
-        raise ValueError('Failed to get collection. Must either provide contract or collection.')
-    collection = collection.replace(' ', '_')
+        raise ValueError(
+            "Failed to get collection. Must either provide contract or collection."
+        )
+    collection = collection.replace(" ", "_")
 
     # Print configuration
-    print(f'Fetching data for {collection}')
-    print(f'Lower ID: {lower_id}')
-    print(f'Upper ID: {upper_id}')
-    print(f'Max supply: {max_supply}')
+    print(f"Fetching data for {collection}")
+    print(f"Lower ID: {lower_id}")
+    print(f"Upper ID: {upper_id}")
+    print(f"Max supply: {max_supply}")
 
     # Fetch all attribute records from the remote server
     token_ids = range(lower_id, upper_id + 1)
@@ -436,12 +458,12 @@ def pull_metadata(args):
 
     # Generate traits DataFrame and save to disk as csv
     trait_db = pd.DataFrame.from_records(records)
-    trait_db = trait_db.set_index('TOKEN_ID')
+    trait_db = trait_db.set_index("TOKEN_ID")
     print(trait_db.head())
-    trait_db.to_csv(f'{ATTRIBUTES_FOLDER}/{collection}.csv')
+    trait_db.to_csv(f"{ATTRIBUTES_FOLDER}/{collection}.csv")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     """
     There are some cases we have found that are not covered by this script:
@@ -468,19 +490,79 @@ if __name__ == '__main__':
     """
 
     # Parse command line arguments
-    ARG_PARSER = argparse.ArgumentParser(description='CLI for pulling NFT metadata.')
-    ARG_PARSER.add_argument('-contract', type=str, default=None, help='Collection contract id (use if want to infer params from contract).')
-    ARG_PARSER.add_argument('-uri_base', type=str, default=None, help='URI base. Not used if contract is provided. (use if want to pull direct from URL).')
-    ARG_PARSER.add_argument('-uri_suffix', type=str, default=None, help='URI suffix. Not used if contract is provided. (default: No suffix).')
-    ARG_PARSER.add_argument('-collection', type=str, default=None, help='Collection name. (Required if pulling direct from URL. Otherwise will infer if not provided).')
-    ARG_PARSER.add_argument('-supply_func', type=str, default='totalSupply', help='Total supply contract function. Not used if pulling direct from URL. (default: "totalSupply").')
-    ARG_PARSER.add_argument('-name_func', type=str, default='name', help='Collection name contract function. Not used if pulling direct from URL. (default: "name").')
-    ARG_PARSER.add_argument('-uri_func', type=str, default='tokenURI', help='URI contract function. Not used if pulling direct from URL. (default: "tokenURI").')
-    ARG_PARSER.add_argument('-lower_id', type=int, default=None, help='Lower bound token id. (Required if pulling direct from URL. Otherwise will infer if not provided).')
-    ARG_PARSER.add_argument('-upper_id', type=int, default=None, help='Upper bound token id. (Required if pulling direct from URL. Otherwise will infer if not provided).')
-    ARG_PARSER.add_argument('-max_supply', type=int, default=None, help='Max token supply. (Required if pulling direct from URL. Otherwise will infer if not provided).')
-    ARG_PARSER.add_argument('-ipfs_gateway', type=str, default=None, help=f'IPFS gateway. (default: {IPFS_GATEWAY}).')
-    ARG_PARSER.add_argument('-sleep', type=float, default=0.05, help='Sleep time between metadata pulls. (default: 0.05).')
+    ARG_PARSER = argparse.ArgumentParser(description="CLI for pulling NFT metadata.")
+    ARG_PARSER.add_argument(
+        "-contract",
+        type=str,
+        default=None,
+        help="Collection contract id (use if want to infer params from contract).",
+    )
+    ARG_PARSER.add_argument(
+        "-uri_base",
+        type=str,
+        default=None,
+        help="URI base. Not used if contract is provided. (use if want to pull direct from URL).",
+    )
+    ARG_PARSER.add_argument(
+        "-uri_suffix",
+        type=str,
+        default=None,
+        help="URI suffix. Not used if contract is provided. (default: No suffix).",
+    )
+    ARG_PARSER.add_argument(
+        "-collection",
+        type=str,
+        default=None,
+        help="Collection name. (Required if pulling direct from URL. Otherwise will infer if not provided).",
+    )
+    ARG_PARSER.add_argument(
+        "-supply_func",
+        type=str,
+        default="totalSupply",
+        help='Total supply contract function. Not used if pulling direct from URL. (default: "totalSupply").',
+    )
+    ARG_PARSER.add_argument(
+        "-name_func",
+        type=str,
+        default="name",
+        help='Collection name contract function. Not used if pulling direct from URL. (default: "name").',
+    )
+    ARG_PARSER.add_argument(
+        "-uri_func",
+        type=str,
+        default="tokenURI",
+        help='URI contract function. Not used if pulling direct from URL. (default: "tokenURI").',
+    )
+    ARG_PARSER.add_argument(
+        "-lower_id",
+        type=int,
+        default=None,
+        help="Lower bound token id. (Required if pulling direct from URL. Otherwise will infer if not provided).",
+    )
+    ARG_PARSER.add_argument(
+        "-upper_id",
+        type=int,
+        default=None,
+        help="Upper bound token id. (Required if pulling direct from URL. Otherwise will infer if not provided).",
+    )
+    ARG_PARSER.add_argument(
+        "-max_supply",
+        type=int,
+        default=None,
+        help="Max token supply. (Required if pulling direct from URL. Otherwise will infer if not provided).",
+    )
+    ARG_PARSER.add_argument(
+        "-ipfs_gateway",
+        type=str,
+        default=None,
+        help=f"IPFS gateway. (default: {IPFS_GATEWAY}).",
+    )
+    ARG_PARSER.add_argument(
+        "-sleep",
+        type=float,
+        default=0.05,
+        help="Sleep time between metadata pulls. (default: 0.05).",
+    )
     ARGS = ARG_PARSER.parse_args()
 
     if ARGS.ipfs_gateway is not None:
