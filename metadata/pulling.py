@@ -557,7 +557,10 @@ if __name__ == "__main__":
         default=None,
         help=f"IPFS gateway. (default: {IPFS_GATEWAY}).",
     )
-    ARG_PARSER.add_argument("-sleep", type=float, default=0.05,
+    ARG_PARSER.add_argument(
+        "-sleep",
+        type=float,
+        default=0.05,
         help="Sleep time between metadata pulls. (default: 0.05).",
     )
     ARGS = ARG_PARSER.parse_args()
