@@ -1,4 +1,4 @@
-exclude: '*'
+exclude: '.\w'
 files: '.py'
 #exclude: '.git|.tox|.md|.csv|.ipynb'
 default_stages: [commit]
