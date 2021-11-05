@@ -1,4 +1,5 @@
-exclude: '.git|.tox'
+files: '.py'
+#exclude: '.git|.tox|.md|.csv|.ipynb'
 default_stages: [commit]
 fail_fast: true
 
