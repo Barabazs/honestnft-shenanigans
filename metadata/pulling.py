@@ -18,7 +18,7 @@ IMPLEMENTATION_SLOT = (
 IPFS_GATEWAY = ""
 
 
-""" 
+"""
 Smart contract helper methods
 """
 
