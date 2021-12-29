@@ -1,4 +1,4 @@
-files: (\.ipynb)|(\.py)$
+files: \.(ipynb|py)$
 default_stages: [commit]
 fail_fast: true
 
