@@ -1,4 +1,5 @@
-files: '.(py|ipynb)$'
+#files: '.(py|ipynb)$'
+types: python
 default_stages: [commit]
 fail_fast: true
 
