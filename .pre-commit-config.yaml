@@ -1,5 +1,5 @@
 #files: '.(py|ipynb)$'
-language: [python]
+language: python
 default_stages: [commit]
 fail_fast: true
 
