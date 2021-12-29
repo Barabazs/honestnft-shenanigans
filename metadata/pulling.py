@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import requests
 import time
-import json
+import json  
 import argparse
 import sys
 from web3 import Web3
@@ -303,9 +303,11 @@ def fetch_all_metadata(
                     elif isinstance(attribute, str):
                         traits[attribute] = result_json[attribute_key][attribute]
                 dictionary_list.append(traits)
+                
+                
             # Handle exceptions result from URI does not contain attributes
             except Exception as err:
-                print(err)
+                    print(err)
                 print(
                     f"Failed to get metadata for id {token_id}. Url response was {result_json}."
                 )
