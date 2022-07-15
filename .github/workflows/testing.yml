@@ -2,7 +2,7 @@ name: Testing
 
 on:
   pull_request_target:
-    branches: [master]
+    branches: [shadow-main]
 
 jobs:
   test:
