@@ -77,7 +77,8 @@ def get_opensea_events(
             )
         else:
             return all_data
-
+    elif response.status_code == 400:
+        raise Exception(f"Error: {response.text}")
     else:
         print(response.text)
         print("error, sleeping then calling again")
