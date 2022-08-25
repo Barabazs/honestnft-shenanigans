@@ -156,7 +156,7 @@ def main(
     """
 
     logging.basicConfig(
-        level=args.log,
+        level="INFO",
         filename=f"{config.SUSPICIOUS_NFTS_FOLDER}/.logs/{contract_address}.log",
         filemode="a",
     )
