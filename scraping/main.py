@@ -46,3 +46,8 @@ for contract_address in _df["address"].values.tolist():
     except Exception as e:
         logger.warning("Exception while scraping contract: {contract_address}")
         logger.exception(e)
+
+        df.loc[df["address"] == contract_address, "done"] = "error"
+        pass
+
+    df.to_csv("contracts.csv", index=False)
