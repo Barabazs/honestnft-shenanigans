@@ -13,6 +13,8 @@ from honestnft_utils import chain, config, misc
 
 from fair_drop import timer
 
+logger = logging.getLogger("fair_drop.suspicious")
+
 
 def get_upper_lower_total(contract_address: str) -> Dict[str, int]:
     """Get the upper and lower bound, and the total supply of the NFTs
@@ -34,9 +36,9 @@ def get_upper_lower_total(contract_address: str) -> Dict[str, int]:
         )
         max_supply = total_supply_func().call()
         upper_id = max_supply + lower_id - 1
-        logging.debug(f"Lower ID of NFT collection: {lower_id}")
-        logging.debug(f"Upper ID of NFT collection: {upper_id}")
-        logging.debug(f"Max supply: {max_supply}")
+        logger.debug(f"Lower ID of NFT collection: {lower_id}")
+        logger.debug(f"Upper ID of NFT collection: {upper_id}")
+        logger.debug(f"Max supply: {max_supply}")
 
         return {"lower_id": lower_id, "upper_id": upper_id, "total_supply": max_supply}
 
@@ -87,7 +89,7 @@ def is_nft_suspicious(
     try:
         res = session.get(nft_url)
     except requests.exceptions.ChunkedEncodingError as error:
-        logging.error(
+        logger.error(
             f"Error while trying to scrape {nft_url}\nWill retry the request..."
         )
         logging.debug(error)
@@ -106,15 +108,15 @@ def is_nft_suspicious(
         }
 
         if is_suspicious:
-            logging.info(f"Found suspicious NFT of URL {nft_url}")
+            logger.info(f"Found suspicious NFT of URL {nft_url}")
 
         return nft_data
     elif res.status_code == 404:
-        logging.error(f"NFT not found at {nft_url}. Skipping...")
+        logger.error(f"NFT not found at {nft_url}. Skipping...")
         return None
     else:
-        logging.error(f"Error while trying to scrape NFT with link {nft_url}")
-        logging.error(res.text)
+        logger.error(f"Error while trying to scrape NFT with link {nft_url}")
+        logger.error(res.text)
         return None
 
 
@@ -178,23 +180,23 @@ def main(
         contract_address=contract_address, lower_id=lower_id, upper_id=upper_id
     )
 
-    logging.info(f"Collection contains {len(collection_nfts_urls)} NFTs")
+    logger.info(f"Collection contains {len(collection_nfts_urls)} NFTs")
 
     collection_cache = load_scrape_cache(contract_address)
-    logging.info(f"Found {len(collection_cache)} NFTs in collection cache")
+    logger.info(f"Found {len(collection_cache)} NFTs in collection cache")
 
     for index, nft in collection_cache.iterrows():
         if nft["url"] in collection_nfts_urls:
-            logging.debug(f"NFT to be scraped already in cache. Skipping {nft['url']}")
+            logger.debug(f"NFT to be scraped already in cache. Skipping {nft['url']}")
             collection_nfts_urls.remove(nft["url"])
-    logging.info(f"Scraping a list of {len(collection_nfts_urls)} NFTs")
+    logger.info(f"Scraping a list of {len(collection_nfts_urls)} NFTs")
 
     nft_urls_batches = [
         collection_nfts_urls[i : i + batch_size]
         for i in range(0, len(collection_nfts_urls), batch_size)
     ]
     for index, url_batch in enumerate(nft_urls_batches):
-        logging.info(f"Scraped {index * batch_size} NFT URLs so far")
+        logger.info(f"Scraped {index * batch_size} NFT URLs so far")
 
         batch = [(url, session, selector) for url in list(url_batch)]
 
@@ -216,14 +218,14 @@ def main(
     df = pd.read_csv(f"{config.SUSPICIOUS_NFTS_FOLDER}/.cache/{contract_address}.csv")
     total_scraped_urls = df.shape[0]
     if total_scraped_urls != total_supply:
-        logging.warning(
+        logger.warning(
             f"Total scraped NFTs ({total_scraped_urls}) does not match total supply ({total_supply})"
         )
         logging.warning("Cache will not be removed. Please retry...")
         keep_cache = True
         raise Exception("Total scraped NFTs does not match total supply")
     else:
-        logging.info(f"Finished scraping {df.shape[0]} NFT URLs")
+        logger.info(f"Finished scraping {df.shape[0]} NFT URLs")
 
         try:
             collection_name = get_collection_name(contract_address)
@@ -259,7 +261,7 @@ def load_scrape_cache(contract_address: str) -> pd.DataFrame:
         df = pd.read_csv(cache_file)
         return df
     except FileNotFoundError:
-        logging.debug("No cache file found. Creating a new one...")
+        logger.debug("No cache file found. Creating a new one...")
         df = pd.DataFrame(
             columns=[
                 "token_id",
