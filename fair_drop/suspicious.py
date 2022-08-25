@@ -11,6 +11,8 @@ import requests
 from bs4 import BeautifulSoup
 from honestnft_utils import chain, config, misc
 
+from fair_drop import timer
+
 
 def get_upper_lower_total(contract_address: str) -> Dict[str, int]:
     """Get the upper and lower bound, and the total supply of the NFTs
@@ -132,6 +134,7 @@ def list_collection_nfts_urls(
     return nft_urls
 
 
+@timer.Timer(text="Executed in {:.2f} seconds")
 def main(
     contract_address: str,
     selector: str,
@@ -151,6 +154,13 @@ def main(
     :param backoff_factor: A backoff factor to apply between attempts after the second try.
     :param batch_size: Batch size of NFT URLs to be processed
     """
+
+    logging.basicConfig(
+        level=args.log,
+        filename=f"{config.SUSPICIOUS_NFTS_FOLDER}/.logs/{contract_address}.log",
+        filemode="a",
+    )
+
     session = misc.mount_session(
         allowed_methods=["HEAD", "GET", "OPTIONS"],
         total_retries=total_retries,
@@ -347,8 +357,6 @@ def _cli_parser() -> argparse.ArgumentParser:
 if __name__ == "__main__":
 
     args = _cli_parser().parse_args()
-
-    logging.basicConfig(level=args.log)
 
     main(
         contract_address=args.contract,
