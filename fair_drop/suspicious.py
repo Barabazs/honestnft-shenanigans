@@ -132,6 +132,7 @@ def list_collection_nfts_urls(
     """
     nft_urls = []
     for i in range(lower_id, upper_id + 1):
+        # for i in :
         nft_urls.append(f"https://opensea.io/assets/ethereum/{contract_address}/{i}")
     return nft_urls
 
