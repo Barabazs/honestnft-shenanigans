@@ -43,8 +43,8 @@ def get_upper_lower_total(contract_address: str) -> Dict[str, int]:
         return {"lower_id": lower_id, "upper_id": upper_id, "total_supply": max_supply}
 
     except Exception as error:
-        logging.error("Error while trying to get the lower/upper IDs and total supply.")
-        logging.error(error)
+        logger.error("Error while trying to get the lower/upper IDs and total supply.")
+        logger.error(error)
         raise Exception(error)
 
 
@@ -66,8 +66,8 @@ def get_collection_name(contract_address: str) -> str:
         return name
 
     except Exception as error:
-        logging.error("Error while trying to get collection name from contract")
-        logging.error(error)
+        logger.error("Error while trying to get collection name from contract")
+        logger.error(error)
         raise Exception(error)
 
 
@@ -81,9 +81,9 @@ def is_nft_suspicious(
     :param selector: CSS selector to find the suspicious flag
     :return: A dict with relevant information about the NFT and whether it is suspicious or not
     """
-    logging.debug(f"Scraping NFT with link: {nft_url}")
+    logger.debug(f"Scraping NFT with link: {nft_url}")
     if selector is None or selector == "":
-        logging.error("No selector provided")
+        logger.error("No selector provided")
         raise Exception("No selector provided")
 
     try:
@@ -92,7 +92,7 @@ def is_nft_suspicious(
         logger.error(
             f"Error while trying to scrape {nft_url}\nWill retry the request..."
         )
-        logging.debug(error)
+        logger.debug(error)
         return is_nft_suspicious(nft_url, session, selector)
 
     if res.status_code == 200:
@@ -158,7 +158,7 @@ def main(
     :param batch_size: Batch size of NFT URLs to be processed
     """
 
-    logging.basicConfig(
+    logger.basicConfig(
         level="INFO",
         filename=f"{config.SUSPICIOUS_NFTS_FOLDER}/.logs/{contract_address}.log",
         filemode="a",
@@ -205,7 +205,7 @@ def main(
             results = p.starmap(is_nft_suspicious, batch)
             results = list(filter(None, results))
             if results == []:
-                logging.info("Reached a batch of NFTs not found. Exiting...")
+                logger.info("Reached a batch of NFTs not found. Exiting...")
                 return
 
             df = pd.DataFrame(results)
@@ -222,7 +222,7 @@ def main(
         logger.warning(
             f"Total scraped NFTs ({total_scraped_urls}) does not match total supply ({total_supply})"
         )
-        logging.warning("Cache will not be removed. Please retry...")
+        logger.warning("Cache will not be removed. Please retry...")
         keep_cache = True
         raise Exception("Total scraped NFTs does not match total supply")
     else:
@@ -231,10 +231,10 @@ def main(
         try:
             collection_name = get_collection_name(contract_address)
         except Exception as e:
-            logging.info(
+            logger.info(
                 "Failed to query collection name. File will be saved with contract_address as filename."
             )
-            logging.error(e)
+            logger.error(e)
             collection_name = contract_address
 
         with open(f"{config.SUSPICIOUS_NFTS_FOLDER}/{collection_name}.json", "w") as f:
@@ -281,7 +281,6 @@ def _cli_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="CLI for scraping NFTs flagged as suspicious on OpenSea."
     )
-
     parser.add_argument(
         "-c",
         "--contract",
