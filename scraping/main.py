@@ -19,9 +19,7 @@ def setup_logger(name, log_file, level=logging.INFO):
 
 logger = setup_logger("main.py", "main.log")
 
-df = pd.read_csv(
-    "contracts.csv"
-)
+df = pd.read_csv("contracts.csv")
 
 _df = df[df["done"].isna()]
 for contract_address in _df["address"].values.tolist():
