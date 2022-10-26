@@ -9,43 +9,11 @@ from typing import Dict, List, Optional
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from honestnft_utils import chain, config, misc
+from honestnft_utils import chain, config, misc, alchemy
 
 from fair_drop import timer
 
 logger = logging.getLogger("fair_drop.suspicious")
-
-
-def get_upper_lower_total(contract_address: str) -> Dict[str, int]:
-    """Get the upper and lower bound, and the total supply of the NFTs
-    in a collection (on-chain).
-
-    :param contract_address: Contract address of the collection
-    :return: A dictionary with the lower and upper bound token id and the total supply
-    """
-    try:
-        abi = chain.get_contract_abi(address=contract_address)
-        abi, contract = chain.get_contract(address=contract_address, abi=abi)
-
-        lower_id = chain.get_lower_token_id(
-            contract=contract, uri_func="tokenURI", abi=abi
-        )
-
-        total_supply_func = chain.get_contract_function(
-            contract=contract, func_name="totalSupply", abi=abi
-        )
-        max_supply = total_supply_func().call()
-        upper_id = max_supply + lower_id - 1
-        logger.debug(f"Lower ID of NFT collection: {lower_id}")
-        logger.debug(f"Upper ID of NFT collection: {upper_id}")
-        logger.debug(f"Max supply: {max_supply}")
-
-        return {"lower_id": lower_id, "upper_id": upper_id, "total_supply": max_supply}
-
-    except Exception as error:
-        logger.error("Error while trying to get the lower/upper IDs and total supply.")
-        logger.error(error)
-        raise Exception(error)
 
 
 def get_collection_name(contract_address: str) -> str:
@@ -121,19 +89,24 @@ def is_nft_suspicious(
 
 
 def list_collection_nfts_urls(
-    contract_address: str, lower_id: int, upper_id: int
+    contract_address: str,
 ) -> List[str]:
     """List all OpenSea URLs for the NFTs in a collection
 
     :param contract_address: Contract address of the collection
-    :param lower_id: Lower bound token id
-    :param upper_id: Upper bound token id
     :return: list of the OpenSea URLs of NFTs
     """
     nft_urls = []
-    for i in range(lower_id, upper_id + 1):
+    token_ids = alchemy.get_all_token_ids(contract_address)
+    if len(token_ids) == 0:
+        logger.error("No NFTs found in collection")
+        raise Exception("No NFTs found in collection")
+
+    for token_id in token_ids:
         # for i in :
-        nft_urls.append(f"https://opensea.io/assets/ethereum/{contract_address}/{i}")
+        nft_urls.append(
+            f"https://opensea.io/assets/ethereum/{contract_address}/{token_id}"
+        )
     return nft_urls
 
 
@@ -144,9 +117,6 @@ def main(
     total_retries: int,
     backoff_factor: int,
     batch_size: int,
-    lower_id: int,
-    upper_id: int,
-    total_supply: int,
     keep_cache: bool,
 ) -> None:
     """Main function to scrape all NFTs in a collection and check if they are suspicious
@@ -171,15 +141,8 @@ def main(
         raise_on_status=False,
         user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:93.0) Gecko/20100101 Firefox/93.0",
     )
-    if lower_id is None and upper_id is None and total_supply is None:
-        upper_lower_total = get_upper_lower_total(contract_address)
-        lower_id = upper_lower_total["lower_id"]
-        upper_id = upper_lower_total["upper_id"]
-        total_supply = upper_lower_total["total_supply"]
 
-    collection_nfts_urls = list_collection_nfts_urls(
-        contract_address=contract_address, lower_id=lower_id, upper_id=upper_id
-    )
+    collection_nfts_urls = list_collection_nfts_urls(contract_address=contract_address)
 
     logger.info(f"Collection contains {len(collection_nfts_urls)} NFTs")
 
@@ -218,9 +181,9 @@ def main(
 
     df = pd.read_csv(f"{config.SUSPICIOUS_NFTS_FOLDER}/.cache/{contract_address}.csv")
     total_scraped_urls = df.shape[0]
-    if total_scraped_urls != total_supply:
+    if total_scraped_urls != len(collection_nfts_urls):
         logger.warning(
-            f"Total scraped NFTs ({total_scraped_urls}) does not match total supply ({total_supply})"
+            f"Total scraped NFTs ({total_scraped_urls}) does not match total supply ({len(collection_nfts_urls)})"
         )
         logger.warning("Cache will not be removed. Please retry...")
         keep_cache = True
@@ -318,24 +281,6 @@ def _cli_parser() -> argparse.ArgumentParser:
         default=50,
     )
     parser.add_argument(
-        "--lower_id",
-        help="Lower bound token ID of the collection",
-        required=False,
-        type=int,
-    )
-    parser.add_argument(
-        "--upper_id",
-        help="Upper bound token ID of the collection",
-        required=False,
-        type=int,
-    )
-    parser.add_argument(
-        "--total_supply",
-        help="Total supply of the collection",
-        required=False,
-        type=int,
-    )
-    parser.add_argument(
         "--log",
         help="Set the desired log level",
         required=False,
@@ -366,8 +311,5 @@ if __name__ == "__main__":
         total_retries=args.retries,
         backoff_factor=args.backoff,
         batch_size=args.batch_size,
-        lower_id=args.lower_id,
-        upper_id=args.upper_id,
-        total_supply=args.total_supply,
         keep_cache=args.keep_cache,
     )
